@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Xcortex | NFC Deep Writer</title>
+<style>
+:root{--bg:#0a0b10;--s:rgba(255,255,255,.03);--b:rgba(255,255,255,.08);--a:#ff5a2c;--t:#0fb3a6;--w:#fff;--m:#8b9bb4}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Inter',sans-serif}
+body{background:var(--bg);color:var(--w);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.cont{max-width:500px;width:100%;text-align:center}
+h1{font-size:2rem;font-weight:800;letter-spacing:-1px}h1 span{color:var(--a)}
+.sub{color:var(--m);font-size:.8rem;text-transform:uppercase;margin-top:5px;margin-bottom:20px}
+.card{background:#15161c;border:1px solid var(--b);border-radius:20px;padding:25px;text-align:left}
+.tabs{display:flex;gap:10px;margin-bottom:20px;border-bottom:1px solid var(--b);padding-bottom:10px}
+.tab-btn{flex:1;background:none;border:none;color:var(--m);cursor:pointer;font-weight:600;padding:8px;border-radius:8px;transition:.2s}
+.tab-btn.active{background:var(--t);color:#000}
+.form-group{margin-bottom:15px}
+.label{display:block;font-size:.75rem;color:var(--m);text-transform:uppercase;margin-bottom:5px}
+.input{width:100%;background:rgba(0,0,0,.2);border:1px solid var(--b);color:#fff;padding:12px;border-radius:10px;outline:none;font-size:1rem}
+.input:focus{border-color:var(--t)}
+textarea.input{resize:vertical;min-height:80px}
+.btn{width:100%;padding:15px;border:none;border-radius:12px;font-weight:700;cursor:pointer;transition:.2s;font-size:1rem;margin-top:10px}
+.btn-write{background:linear-gradient(135deg,#00c6ff,#0072ff);color:#fff}
+.btn-clear{background:rgba(255,255,255,.05);color:var(--w);border:1px solid var(--b)}
+.btn-read{background:var(--t);color:#000}
+.btn:hover{opacity:.9;transform:translateY(-2px)}
+.status{margin-top:15px;padding:10px;border-radius:8px;font-size:.85rem;display:none;text-align:center}
+.status.ok{display:block;background:rgba(15,179,166,.1);color:var(--t);border:1px solid rgba(15,179,166,.3)}
+.status.err{display:block;background:rgba(255,90,44,.1);color:var(--a);border:1px solid rgba(255,90,44,.3)}
+.info-box{background:rgba(0,0,0,.3);padding:15px;border-radius:10px;margin-top:20px;font-family:monospace;font-size:.8rem;color:var(--m);word-break:break-all;max-height:150px;overflow-y:auto}
+.uid-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed var(--b)}
+.uid-val{color:var(--a);font-weight:bold;font-family:monospace}
+.hidden{display:none!important}
+.loader{width:20px;height:20px;border:3px solid rgba(255,255,255,.1);border-top-color:var(--t);border-radius:50%;animation:spin 1s linear infinite;display:inline-block;margin-right:10px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="cont">
+<header><h1>X<span>cortex</span></h1><div class="sub">NFC Data Manager</div></header>
+
+<div class="card">
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('write')">✍️ Запись</button>
+        <button class="tab-btn" onclick="switchTab('read')">📖 Чтение</button>
+        <button class="tab-btn" onclick="switchTab('info')">ℹ️ Инфо</button>
+    </div>
+
+    <!-- WRITE TAB -->
+    <div id="tab-write" class="tab-content">
+        <div class="form-group">
+            <label class="label">Тип данных</label>
+            <select id="data-type" class="input" onchange="toggleFields()">
+                <option value="text">Текст (Plain Text)</option>
+                <option value="url">Ссылка (URL)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="label" id="field-label">Введите текст</label>
+            <textarea id="content-input" class="input" placeholder="Пример: Привет от Xcortex!"></textarea>
+        </div>
+        <button class="btn btn-write" onclick="performWrite()">💾 ЗАПИСАТЬ НА МЕТКУ</button>
+        <button class="btn btn-clear" onclick="clearTag()">🗑 ОЧИСТИТЬ МЕТКУ</button>
+    </div>
+
+    <!-- READ TAB -->
+    <div id="tab-read" class="tab-content hidden">
+        <p style="color:var(--m);font-size:.8rem;margin-bottom:15px;">Приложите метку к телефону, чтобы увидеть её содержимое.</p>
+        <button class="btn btn-read" onclick="performRead()">📡 СЧИТАТЬ ДАННЫЕ</button>
+        <div id="read-result" class="info-box hidden"></div>
+    </div>
+
+    <!-- INFO TAB -->
+    <div id="tab-info" class="tab-content hidden">
+        <div class="uid-row">
+            <span class="label">UID (Серийный номер):</span>
+            <span class="uid-val" id="tag-uid">---</span>
+        </div>
+        <div class="form-group">
+            <label class="label">Статус защиты:</label>
+            <div id="lock-status" style="color:var(--m);font-size:.8rem;">Неизвестно</div>
+        </div>
+        <div class="form-group">
+            <label class="label">Изменение UID:</label>
+            <div style="color:var(--a);font-size:.8rem;font-weight:bold;">❌ НЕВОЗМОЖНО (Hardware Limitation)</div>
+            <small style="color:var(--m);display:block;margin-top:5px;">UID зашит на заводе. Программная смена невозможна ни в одном браузере.</small>
+        </div>
+        <button class="btn btn-read" onclick="refreshInfo()">🔄 ОБНОВИТЬ ИНФО</button>
+    </div>
+
+    <!-- Global Status Message -->
+    <div id="status-msg" class="status"></div>
+</div>
+
+<p style="margin-top:20px;font-size:.7rem;color:var(--m)">Работает только с NTAG, MIFARE Ultralight.<br>Банковские карты защищены от записи.</p>
+</div>
+
+<script>
+let reader = null;
+let writer = null;
+let currentUid = '';
+
+// --- UI LOGIC ---
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+    
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    hideStatus();
+}
+
+function toggleFields() {
+    const type = document.getElementById('data-type').value;
+    const label = document.getElementById('field-label');
+    const input = document.getElementById('content-input');
+    
+    if(type === 'url') {
+        label.innerText = "Введите URL (без http://)";
+        input.placeholder = "example.com/page";
+    } else {
+        label.innerText = "Введите текст";
+        input.placeholder = "Любой текст...";
+    }
+}
+
+function showStatus(msg, isError = false) {
+    const el = document.getElementById('status-msg');
+    el.innerHTML = msg;
+    el.className = isError ? 'status err' : 'status ok';
+}
+
+function hideStatus() {
+    document.getElementById('status-msg').className = 'status';
+}
+
+// --- CORE NFC FUNCTIONS ---
+
+async function stopScan() {
+    if(reader) try { await reader.stop(); } catch(e){}
+    reader = null;
+}
+
+async function performWrite(isClear = false) {
+    const type = document.getElementById('data-type').value;
+    let content = document.getElementById('content-input').value.trim();
+    
+    if(!isClear && !content) {
+        showStatus("❌ Введите данные!", true);
+        return;
+    }
+
+    if(isClear) content = ""; // Empty string clears the tag
+
+    showStatus('<span class="loader"></span> Приложите метку...');
+    
+    try {
+        if(!('NDEFWriter' in window)) throw new Error("Web NFC Write not supported");
+        
+        writer = new NDEFWriter();
+        
+        let record;
+        if(type === 'url') {
+            // Ensure URL has protocol for proper formatting if needed, though NDEF UrlRecord usually handles it
+            record = {
+                recordType: "url",
+                data: content.startsWith('http') ? content : `https://${content}`
+            };
+        } else {
+            record = {
+                recordType: "text",
+                language: "ru",
+                data: content
+            };
+        }
+
+        await writer.write({ records: [record] });
+        
+        showStatus(isClear ? "✅ Метка очищена!" : "✅ Данные успешно записаны!");
+        setTimeout(hideStatus, 3000);
+        
+    } catch(err) {
+        console.error(err);
+        let msg = err.message;
+        if(msg.includes("NotAllowedError")) msg += " (Карта защищена от записи!)";
+        if(msg.includes("NotFoundError")) msg += " (Метка не найдена или неверного типа)";
+        showStatus(`❌ Ошибка: ${msg}`, true);
+    } finally {
+        // No need to stop writer explicitly as write() is one-shot
+    }
+}
+
+function clearTag() {
+    if(confirm("Вы уверены, что хотите удалить ВСЕ данные с этой метки?")) {
+        performWrite(true);
+    }
+}
+
+async function performRead() {
+    showStatus('<span class="loader"></span> Сканирование...');
+    await stopScan();
+    
+    try {
+        if(!('NDEFReader' in window)) throw new Error("No NFC Support");
+        
+        reader = new NDEFReader();
+        
+        reader.addEventListener("reading", async ({ serialNumber, records }) => {
+            await stopScan();
+            
+            currentUid = serialNumber || "---";
+            document.getElementById('tag-uid').innerText = currentUid;
+            
+            const resultBox = document.getElementById('read-result');
+            resultBox.classList.remove('hidden');
+            
+            if(records && records.length > 0) {
+                let html = "<strong>Найдено записей:</strong><br>";
+                records.forEach((rec, index) => {
+                    let val = "";
+                    try {
+                        if(rec.recordType === 'text') {
+                            val = new TextDecoder().decode(rec.data);
+                        } else if(rec.recordType === 'url') {
+                            val = new TextDecoder().decode(rec.data);
+                        } else {
+                            val = `[Binary Data: ${Array.from(rec.data).length} bytes]`;
+                        }
+                    } catch(e) {
+                        val = "[Ошибка декодирования]";
+                    }
+                    
+                    html += `<div style="margin:5px 0;padding:5px;background:rgba(255,255,255,0.05);border-radius:4px">
+                                <small>#${index+1} (${rec.recordType}):</small><br>
+                                <span style="color:var(--t)">${val}</span>
+                             </div>`;
+                });
+                resultBox.innerHTML = html;
+            } else {
+                resultBox.innerHTML = "<em>Метка пуста (нет NDEF записей).</em>";
+            }
+            
+            showStatus("✅ Данные считаны.");
+            setTimeout(hideStatus, 2000);
+        });
+
+        reader.addEventListener("readingerror", () => {
+             showStatus("⚠️ Ошибка чтения. Попробуйте сильнее прижать.", true);
+             setTimeout(stopScan, 2000);
+        });
+
+        await reader.scan();
+
+    } catch(err) {
+        showStatus(`❌ ${err.message}`, true);
+    }
+}
+
+async function refreshInfo() {
+    showStatus('<span class="loader"></span> Получение UID...');
+    await stopScan();
+    
+    try {
+        reader = new NDEFReader();
+        reader.addEventListener("reading", async ({ serialNumber }) => {
+            await stopScan();
+            currentUid = serialNumber || "---";
+            document.getElementById('tag-uid').innerText = currentUid;
+            showStatus("✅ UID обновлен.");
+            setTimeout(hideStatus, 2000);
+        });
+        await reader.scan();
+    } catch(err) {
+        showStatus(`❌ ${err.message}`, true);
+    }
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+    if(!('NDEFReader' in window)) {
+        alert("Ваш браузер не поддерживает Web NFC. Используйте Chrome на Android.");
+    }
+});
+</script>
+</body>
+</html>
