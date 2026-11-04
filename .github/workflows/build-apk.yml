@@ -3,7 +3,7 @@ name: Build Xcortex NFC App
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: # Позволяет запустить вручную кнопкой
+  workflow_dispatch:
 
 jobs:
   build:
@@ -17,36 +17,50 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Capacitor & Dependencies
-        run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-          
-      - name: Initialize Project Structure
+      # 1. Создаем структуру папок ДО установки зависимостей
+      - name: Prepare Web Directory
         run: |
           mkdir -p www
           cp index.html www/index.html
+
+      # 2. Инициализируем проект
+      - name: Initialize Capacitor Project
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
           npx cap init "Xcortex Writer" "io.xcortex.writer" --web-dir=www
           npx cap add android
           npx cap sync
 
-      - name: Add NFC Permissions
+      # 3. Добавляем права NFC через sed (более надежный способ для CI)
+      - name: Add NFC Permissions to Manifest
         run: |
-          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.NFC" />\n    <uses-feature android:name="android.hardware.nfc" android:required="true" />' android/app/src/main/AndroidManifest.xml
+          MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
+          if grep -q "android.permission.NFC" "$MANIFEST_PATH"; then
+            echo "NFC permission already exists."
+          else
+            sed -i '/<manifest/a \    <uses-permission android:name="android.permission.NFC" />\n    <uses-feature android:name="android.hardware.nfc" android:required="true" />' "$MANIFEST_PATH"
+            echo "Added NFC permissions."
+          fi
 
+      # 4. Настройка Java
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Grant execute permission for gradlew
+      # 5. КРИТИЧЕСКИЙ ШАГ: Даем права на исполнение gradlew
+      - name: Grant Execute Permission for Gradle Wrapper
         run: chmod +x android/gradlew
 
+      # 6. Сборка APK
       - name: Build Debug APK
+        working-directory: ./android
         run: |
-          cd android
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
+      # 7. Загрузка артефакта
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
