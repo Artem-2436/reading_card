@@ -2,288 +2,253 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Xcortex | NFC Deep Writer</title>
+<title>Xcortex | NFC Writer & Reader</title>
 <style>
-:root{--bg:#0a0b10;--s:rgba(255,255,255,.03);--b:rgba(255,255,255,.08);--a:#ff5a2c;--t:#0fb3a6;--w:#fff;--m:#8b9bb4}
-*{box-sizing:border-box;margin:0;padding:0;font-family:'Inter',sans-serif}
-body{background:var(--bg);color:var(--w);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.cont{max-width:500px;width:100%;text-align:center}
-h1{font-size:2rem;font-weight:800;letter-spacing:-1px}h1 span{color:var(--a)}
-.sub{color:var(--m);font-size:.8rem;text-transform:uppercase;margin-top:5px;margin-bottom:20px}
-.card{background:#15161c;border:1px solid var(--b);border-radius:20px;padding:25px;text-align:left}
-.tabs{display:flex;gap:10px;margin-bottom:20px;border-bottom:1px solid var(--b);padding-bottom:10px}
-.tab-btn{flex:1;background:none;border:none;color:var(--m);cursor:pointer;font-weight:600;padding:8px;border-radius:8px;transition:.2s}
-.tab-btn.active{background:var(--t);color:#000}
-.form-group{margin-bottom:15px}
-.label{display:block;font-size:.75rem;color:var(--m);text-transform:uppercase;margin-bottom:5px}
-.input{width:100%;background:rgba(0,0,0,.2);border:1px solid var(--b);color:#fff;padding:12px;border-radius:10px;outline:none;font-size:1rem}
-.input:focus{border-color:var(--t)}
+:root{--bg:#0a0b10;--card:#15161c;--border:#2a2d35;--acc:#0fb3a6;--warn:#ff5a2c;--txt:#fff;--mut:#8b9bb4}
+*{box-sizing:border-box;margin:0;padding:0;font-family:sans-serif}
+body{background:var(--bg);color:var(--txt);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+.cont{max-width:450px;width:100%}
+h1{font-size:1.5rem;text-align:center;margin-bottom:20px}h1 span{color:var(--acc)}
+
+/* Tabs */
+.tabs{display:flex;gap:10px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:10px}
+.tab-btn{flex:1;background:none;border:none;color:var(--mut);cursor:pointer;font-weight:600;padding:8px;border-radius:8px;transition:.2s}
+.tab-btn.active{background:rgba(15,179,166,.1);color:var(--acc)}
+
+/* Forms & Inputs */
+.panel{display:none}.panel.act{display:block;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.field{margin-bottom:15px}
+.label{display:block;font-size:.75rem;color:var(--mut);text-transform:uppercase;margin-bottom:5px}
+.input,select{width:100%;background:rgba(0,0,0,.2);border:1px solid var(--border);color:#fff;padding:12px;border-radius:8px;outline:none;font-size:1rem}
+.input:focus{border-color:var(--acc)}
 textarea.input{resize:vertical;min-height:80px}
-.btn{width:100%;padding:15px;border:none;border-radius:12px;font-weight:700;cursor:pointer;transition:.2s;font-size:1rem;margin-top:10px}
-.btn-write{background:linear-gradient(135deg,#00c6ff,#0072ff);color:#fff}
-.btn-clear{background:rgba(255,255,255,.05);color:var(--w);border:1px solid var(--b)}
-.btn-read{background:var(--t);color:#000}
-.btn:hover{opacity:.9;transform:translateY(-2px)}
-.status{margin-top:15px;padding:10px;border-radius:8px;font-size:.85rem;display:none;text-align:center}
-.status.ok{display:block;background:rgba(15,179,166,.1);color:var(--t);border:1px solid rgba(15,179,166,.3)}
-.status.err{display:block;background:rgba(255,90,44,.1);color:var(--a);border:1px solid rgba(255,90,44,.3)}
-.info-box{background:rgba(0,0,0,.3);padding:15px;border-radius:10px;margin-top:20px;font-family:monospace;font-size:.8rem;color:var(--m);word-break:break-all;max-height:150px;overflow-y:auto}
-.uid-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed var(--b)}
-.uid-val{color:var(--a);font-weight:bold;font-family:monospace}
-.hidden{display:none!important}
-.loader{width:20px;height:20px;border:3px solid rgba(255,255,255,.1);border-top-color:var(--t);border-radius:50%;animation:spin 1s linear infinite;display:inline-block;margin-right:10px;vertical-align:middle}
+
+/* Buttons */
+.btn{width:100%;padding:15px;border:none;border-radius:10px;font-weight:700;cursor:pointer;transition:.2s;font-size:1rem;margin-top:10px}
+.btn-primary{background:linear-gradient(135deg,#00c6ff,#0072ff);color:#fff}
+.btn-secondary{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--txt)}
+.btn:hover{transform:translateY(-2px);opacity:.9}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* Results Area */
+.result-box{background:#000;border:1px solid var(--border);border-radius:10px;padding:15px;font-family:monospace;font-size:.85rem;color:#aaa;max-height:300px;overflow-y:auto;margin-top:15px;display:none}
+.res-row{display:flex;justify-content:space-between;border-bottom:1px solid #222;padding:5px 0}
+.res-val{color:var(--acc);word-break:break-all;text-align:right;max-width:60%}
+.res-full{color:#fff;margin-top:10px;white-space:pre-wrap;word-break:break-word;background:rgba(255,255,255,.05);padding:10px;border-radius:6px}
+
+/* Modal Overlay for Writing */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:1000;display:none;justify-content:center;align-items:center;backdrop-filter:blur(5px)}
+.modal.show{display:flex}
+.m-card{background:var(--card);border:1px solid var(--acc);padding:30px;border-radius:16px;text-align:center;width:90%;max-width:300px;box-shadow:0 0 30px rgba(15,179,166,.2)}
+.spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.1);border-top-color:var(--acc);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 15px}
 @keyframes spin{to{transform:rotate(360deg)}}
+.m-text{font-size:1.1rem;font-weight:600;margin-bottom:20px;color:#fff}
+.m-status{font-size:.9rem;color:var(--mut);min-height:20px}
+.m-success{color:var(--acc)!important;font-weight:bold}
+.m-error{color:var(--warn)!important;font-weight:bold}
 </style>
 </head>
 <body>
 
 <div class="cont">
-<header><h1>X<span>cortex</span></h1><div class="sub">NFC Data Manager</div></header>
+    <h1>X<span>cortex</span> Writer</h1>
 
-<div class="card">
-    <!-- Tabs -->
+    <!-- Navigation -->
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('write')">✍️ Запись</button>
-        <button class="tab-btn" onclick="switchTab('read')">📖 Чтение</button>
-        <button class="tab-btn" onclick="switchTab('info')">ℹ️ Инфо</button>
+        <button class="tab-btn" onclick="switchTab('read')">📖 Диагностика</button>
     </div>
 
-    <!-- WRITE TAB -->
-    <div id="tab-write" class="tab-content">
-        <div class="form-group">
+    <!-- WRITE PANEL -->
+    <div id="p-write" class="panel act">
+        <div class="field">
             <label class="label">Тип данных</label>
-            <select id="data-type" class="input" onchange="toggleFields()">
+            <select id="w-type" onchange="updatePlaceholder()">
                 <option value="text">Текст (Plain Text)</option>
                 <option value="url">Ссылка (URL)</option>
             </select>
         </div>
-        <div class="form-group">
-            <label class="label" id="field-label">Введите текст</label>
-            <textarea id="content-input" class="input" placeholder="Пример: Привет от Xcortex!"></textarea>
+        <div class="field">
+            <label class="label">Содержимое</label>
+            <textarea id="w-data" class="input" placeholder="Введите текст..."></textarea>
         </div>
-        <button class="btn btn-write" onclick="performWrite()">💾 ЗАПИСАТЬ НА МЕТКУ</button>
-        <button class="btn btn-clear" onclick="clearTag()">🗑 ОЧИСТИТЬ МЕТКУ</button>
+        <button class="btn btn-primary" onclick="openWriteModal()">💾 ЗАПИСАТЬ НА МЕТКУ</button>
     </div>
 
-    <!-- READ TAB -->
-    <div id="tab-read" class="tab-content hidden">
-        <p style="color:var(--m);font-size:.8rem;margin-bottom:15px;">Приложите метку к телефону, чтобы увидеть её содержимое.</p>
-        <button class="btn btn-read" onclick="performRead()">📡 СЧИТАТЬ ДАННЫЕ</button>
-        <div id="read-result" class="info-box hidden"></div>
+    <!-- READ/DIAGNOSTICS PANEL -->
+    <div id="p-read" class="panel">
+        <button class="btn btn-secondary" onclick="startDiagnosis()">🔍 СКАНИРОВАТЬ И АНАЛИЗИРОВАТЬ</button>
+        <div id="diag-result" class="result-box"></div>
     </div>
-
-    <!-- INFO TAB -->
-    <div id="tab-info" class="tab-content hidden">
-        <div class="uid-row">
-            <span class="label">UID (Серийный номер):</span>
-            <span class="uid-val" id="tag-uid">---</span>
-        </div>
-        <div class="form-group">
-            <label class="label">Статус защиты:</label>
-            <div id="lock-status" style="color:var(--m);font-size:.8rem;">Неизвестно</div>
-        </div>
-        <div class="form-group">
-            <label class="label">Изменение UID:</label>
-            <div style="color:var(--a);font-size:.8rem;font-weight:bold;">❌ НЕВОЗМОЖНО (Hardware Limitation)</div>
-            <small style="color:var(--m);display:block;margin-top:5px;">UID зашит на заводе. Программная смена невозможна ни в одном браузере.</small>
-        </div>
-        <button class="btn btn-read" onclick="refreshInfo()">🔄 ОБНОВИТЬ ИНФО</button>
-    </div>
-
-    <!-- Global Status Message -->
-    <div id="status-msg" class="status"></div>
 </div>
 
-<p style="margin-top:20px;font-size:.7rem;color:var(--m)">Работает только с NTAG, MIFARE Ultralight.<br>Банковские карты защищены от записи.</p>
+<!-- WRITING MODAL -->
+<div class="modal" id="write-modal">
+    <div class="m-card">
+        <div class="spinner" id="w-spinner"></div>
+        <div class="m-text">Приложите метку<br>к задней панели телефона</div>
+        <div class="m-status" id="w-status">Ожидание...</div>
+        <button class="btn btn-secondary" style="margin-top:20px;font-size:.8rem;padding:10px" onclick="closeWriteModal(false)">Отмена</button>
+    </div>
 </div>
 
 <script>
 let reader = null;
 let writer = null;
-let currentUid = '';
 
 // --- UI LOGIC ---
-function switchTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+function switchTab(tab) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('act'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-    
-    hideStatus();
+    document.getElementById(`p-${tab}`).classList.add('act');
+    // Find button by text or index, simpler: just toggle classes on all buttons based on order
+    const btns = document.querySelectorAll('.tab-btn');
+    if(tab === 'write') btns[0].classList.add('active');
+    else btns[1].classList.add('active');
 }
 
-function toggleFields() {
-    const type = document.getElementById('data-type').value;
-    const label = document.getElementById('field-label');
-    const input = document.getElementById('content-input');
+function updatePlaceholder() {
+    const type = document.getElementById('w-type').value;
+    const inp = document.getElementById('w-data');
+    inp.placeholder = type === 'url' ? "https://example.com" : "Любой текст...";
+}
+
+// --- DIAGNOSTICS (READ) LOGIC ---
+async function startDiagnosis() {
+    if(!('NDEFReader' in window)) return alert("Web NFC не поддерживается");
     
-    if(type === 'url') {
-        label.innerText = "Введите URL (без http://)";
-        input.placeholder = "example.com/page";
-    } else {
-        label.innerText = "Введите текст";
-        input.placeholder = "Любой текст...";
-    }
-}
+    const resBox = document.getElementById('diag-result');
+    resBox.style.display = 'block';
+    resBox.innerHTML = '<div style="color:var(--mut)">Сканирование...</div>';
 
-function showStatus(msg, isError = false) {
-    const el = document.getElementById('status-msg');
-    el.innerHTML = msg;
-    el.className = isError ? 'status err' : 'status ok';
-}
-
-function hideStatus() {
-    document.getElementById('status-msg').className = 'status';
-}
-
-// --- CORE NFC FUNCTIONS ---
-
-async function stopScan() {
-    if(reader) try { await reader.stop(); } catch(e){}
-    reader = null;
-}
-
-async function performWrite(isClear = false) {
-    const type = document.getElementById('data-type').value;
-    let content = document.getElementById('content-input').value.trim();
-    
-    if(!isClear && !content) {
-        showStatus("❌ Введите данные!", true);
-        return;
-    }
-
-    if(isClear) content = ""; // Empty string clears the tag
-
-    showStatus('<span class="loader"></span> Приложите метку...');
-    
     try {
-        if(!('NDEFWriter' in window)) throw new Error("Web NFC Write not supported");
-        
-        writer = new NDEFWriter();
-        
-        let record;
-        if(type === 'url') {
-            // Ensure URL has protocol for proper formatting if needed, though NDEF UrlRecord usually handles it
-            record = {
-                recordType: "url",
-                data: content.startsWith('http') ? content : `https://${content}`
-            };
-        } else {
-            record = {
-                recordType: "text",
-                language: "ru",
-                data: content
-            };
-        }
-
-        await writer.write({ records: [record] });
-        
-        showStatus(isClear ? "✅ Метка очищена!" : "✅ Данные успешно записаны!");
-        setTimeout(hideStatus, 3000);
-        
-    } catch(err) {
-        console.error(err);
-        let msg = err.message;
-        if(msg.includes("NotAllowedError")) msg += " (Карта защищена от записи!)";
-        if(msg.includes("NotFoundError")) msg += " (Метка не найдена или неверного типа)";
-        showStatus(`❌ Ошибка: ${msg}`, true);
-    } finally {
-        // No need to stop writer explicitly as write() is one-shot
-    }
-}
-
-function clearTag() {
-    if(confirm("Вы уверены, что хотите удалить ВСЕ данные с этой метки?")) {
-        performWrite(true);
-    }
-}
-
-async function performRead() {
-    showStatus('<span class="loader"></span> Сканирование...');
-    await stopScan();
-    
-    try {
-        if(!('NDEFReader' in window)) throw new Error("No NFC Support");
-        
+        await stopScanner();
         reader = new NDEFReader();
         
         reader.addEventListener("reading", async ({ serialNumber, records }) => {
-            await stopScan();
-            
-            currentUid = serialNumber || "---";
-            document.getElementById('tag-uid').innerText = currentUid;
-            
-            const resultBox = document.getElementById('read-result');
-            resultBox.classList.remove('hidden');
-            
-            if(records && records.length > 0) {
-                let html = "<strong>Найдено записей:</strong><br>";
-                records.forEach((rec, index) => {
-                    let val = "";
-                    try {
-                        if(rec.recordType === 'text') {
-                            val = new TextDecoder().decode(rec.data);
-                        } else if(rec.recordType === 'url') {
-                            val = new TextDecoder().decode(rec.data);
-                        } else {
-                            val = `[Binary Data: ${Array.from(rec.data).length} bytes]`;
-                        }
-                    } catch(e) {
-                        val = "[Ошибка декодирования]";
-                    }
-                    
-                    html += `<div style="margin:5px 0;padding:5px;background:rgba(255,255,255,0.05);border-radius:4px">
-                                <small>#${index+1} (${rec.recordType}):</small><br>
-                                <span style="color:var(--t)">${val}</span>
-                             </div>`;
-                });
-                resultBox.innerHTML = html;
-            } else {
-                resultBox.innerHTML = "<em>Метка пуста (нет NDEF записей).</em>";
-            }
-            
-            showStatus("✅ Данные считаны.");
-            setTimeout(hideStatus, 2000);
+            await stopScanner();
+            renderDiagnostics(serialNumber, records);
         });
 
-        reader.addEventListener("readingerror", () => {
-             showStatus("⚠️ Ошибка чтения. Попробуйте сильнее прижать.", true);
-             setTimeout(stopScan, 2000);
+        reader.addEventListener("error", () => {
+             resBox.innerHTML = '<div style="color:var(--warn)">Ошибка чтения. Попробуйте еще раз.</div>';
         });
 
         await reader.scan();
 
-    } catch(err) {
-        showStatus(`❌ ${err.message}`, true);
+    } catch (err) {
+        resBox.innerHTML = `<div style="color:var(--warn)">Ошибка: ${err.message}</div>`;
     }
 }
 
-async function refreshInfo() {
-    showStatus('<span class="loader"></span> Получение UID...');
-    await stopScan();
-    
-    try {
-        reader = new NDEFReader();
-        reader.addEventListener("reading", async ({ serialNumber }) => {
-            await stopScan();
-            currentUid = serialNumber || "---";
-            document.getElementById('tag-uid').innerText = currentUid;
-            showStatus("✅ UID обновлен.");
-            setTimeout(hideStatus, 2000);
+function renderDiagnostics(uid, records) {
+    const box = document.getElementById('diag-result');
+    let html = `
+        <div class="res-row"><span>UID:</span><span class="res-val">${uid || 'N/A'}</span></div>
+        <div class="res-row"><span>NDEF Records:</span><span class="res-val">${records ? records.length : 0}</span></div>
+    `;
+
+    if (records && records.length > 0) {
+        records.forEach((rec, i) => {
+            let content = "";
+            try {
+                if(rec.recordType === 'text' || rec.recordType === 'url') {
+                    content = new TextDecoder().decode(rec.data);
+                } else {
+                    content = `[Binary Data: ${Array.from(rec.data).length} bytes]`;
+                }
+            } catch(e) { content = "[Decode Error]"; }
+
+            html += `
+                <div style="margin-top:10px;border-top:1px dashed #333;padding-top:10px">
+                    <div class="res-row"><span>#${i+1} Type:</span><span class="res-val">${rec.recordType.toUpperCase()}</span></div>
+                    <div class="res-row"><span>Encoding:</span><span class="res-val">${rec.language || 'utf-8'}</span></div>
+                    <div class="res-row"><span>Size:</span><span class="res-val">${rec.data.byteLength} B</span></div>
+                    <div class="res-full">${content}</div>
+                </div>
+            `;
         });
-        await reader.scan();
-    } catch(err) {
-        showStatus(`❌ ${err.message}`, true);
+    } else {
+        html += `<div style="margin-top:10px;color:var(--mut);text-align:center">Метка пуста или защищена от чтения данных.</div>`;
     }
+    
+    box.innerHTML = html;
+}
+
+// --- WRITING LOGIC ---
+async function openWriteModal() {
+    const type = document.getElementById('w-type').value;
+    const data = document.getElementById('w-data').value.trim();
+    
+    if(!data) return alert("Введите данные!");
+    if(!('NDEFWriter' in window)) return alert("Web NFC Write не поддерживается");
+
+    const modal = document.getElementById('write-modal');
+    const status = document.getElementById('w-status');
+    const spinner = document.getElementById('w-spinner');
+    
+    // Reset State
+    modal.classList.add('show');
+    status.innerText = "Активация модуля...";
+    status.className = "m-status";
+    spinner.style.borderTopColor = "var(--acc)";
+    spinner.style.animationPlayState = "running";
+
+    try {
+        await stopScanner(); // Ensure no other readers are blocking
+        
+        writer = new NDEFWriter();
+        
+        // Construct Record
+        let record;
+        if(type === 'url') {
+            // Basic URL validation/formatting
+            let url = data.startsWith('http') ? data : `https://${data}`;
+            record = { recordType: "url", data: url };
+        } else {
+            record = { recordType: "text", language: "ru", data: data };
+        }
+
+        status.innerText = "Ждем метку...";
+        
+        // The write method itself waits for a tag to be present when called? 
+        // Actually, standard behavior is: call write(), then hold tag.
+        // But to give feedback, we can rely on the promise resolution.
+        
+        await writer.write({ records: [record] });
+        
+        // Success Path
+        spinner.style.display = 'none'; // Hide loader
+        status.innerText = "✅ УСПЕШНО ЗАПИСАНО!";
+        status.className = "m-status m-success";
+        
+        setTimeout(() => closeWriteModal(true), 1500);
+
+    } catch (err) {
+        console.error(err);
+        spinner.style.display = 'none';
+        status.innerText = `❌ Ошибка: ${err.name}`;
+        status.className = "m-status m-error";
+        setTimeout(() => closeWriteModal(false), 3000);
+    }
+}
+
+function closeWriteModal(success) {
+    document.getElementById('write-modal').classList.remove('show');
+    document.getElementById('w-spinner').style.display = 'block'; // Restore for next time
+    if(success) document.getElementById('w-data').value = ''; // Clear input on success
+}
+
+async function stopScanner() {
+    if(reader) try { await reader.stop(); } catch(e){}
+    reader = null;
+    // Note: NDEFWriter doesn't have explicit stop, it's one-shot
 }
 
 // Init
-document.addEventListener('DOMContentLoaded', () => {
-    if(!('NDEFReader' in window)) {
-        alert("Ваш браузер не поддерживает Web NFC. Используйте Chrome на Android.");
-    }
-});
+updatePlaceholder();
 </script>
 </body>
 </html>
